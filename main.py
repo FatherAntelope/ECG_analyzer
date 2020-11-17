@@ -4,6 +4,8 @@ from tkinter import filedialog
 
 from PIL import ImageTk, Image
 
+import cv2 as cv
+
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -18,7 +20,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 window = Tk()
-model = load_model('ECG_CNN.h5')
+#model = load_model('ECG_CNN.h5')
 img_analys = 0
 
 def main():
@@ -26,6 +28,8 @@ def main():
     # print(model.get_weights())
     #Запуск GUI
     initGUI()
+
+
 
 
 def initGUI():
@@ -81,26 +85,24 @@ def openImageECG():
 
 
 def analysisImageECG():
-    image_width = 300
-    image_height = 505
-    img_path = 'norm.jpg'
+    # нужно сюда передать открытый файл с диспетчера
+    img = cv.imread('image1.jpg', 0)
 
+    #img = cv.equalizeHist(img)
 
-    img = image.load_img(img_path, target_size=(image_width, image_height), color_mode="rgb")
+    img = cv.cvtColor(img, cv.COLOR_GRAY2RGB)
 
-    plt.imshow(img.convert('RGBA'))
+    threshold, img = cv.threshold(img, 138, 255, cv.THRESH_BINARY_INV)
+    img = cv.resize(img, (505, 300), interpolation=cv.INTER_AREA)
+
+    img = img.astype('float')
+    cv.imshow('ECG', img)
+
+    plt.imshow(img)
     plt.show()
-
-    img = image.img_to_array(img)
-    img = np.expand_dims(img, axis=0)
-    result = model.predict(img)
-
-    print(result)
-
-    if result[0][0] == 0:
-        print('Есть признаки инфаркта')
-    else:
-        print('Нормальное ЭКГ')
+    roi = image.img_to_array(img)
+    roi = np.expand_dims(roi, axis=0)
+    print(roi)
 
 
 
