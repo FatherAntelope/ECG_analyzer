@@ -2,7 +2,7 @@ from tkinter import *
 from tkinter import messagebox
 from tkinter import filedialog
 
-from PIL import ImageTk, Image
+from PIL import ImageTk, Image, ImageChops
 
 import cv2 as cv
 
@@ -82,6 +82,14 @@ def openImageECG():
     file = filedialog.askopenfilename(title="Выберите ЭКГ изображение", filetypes=[("Image files", "*.png *.jpg")])
     img_path = Image.open(file)
 
+    extrema = img_path.convert("L").getextrema()
+    if extrema == (0, 0):
+        print('Black')
+    elif extrema == (1, 1):
+        print('White')
+    print(extrema[0])
+    print(extrema[1])
+
     img_path = img_path.resize((image_weight, image_height), Image.ADAPTIVE)
     img_path = ImageTk.PhotoImage(img_path)
 
@@ -89,8 +97,12 @@ def openImageECG():
     panel.image = img_path
     panel.grid(row=1)
 
-    button = Button(window, text='Проанализировать изображение', command=lambda: analysisImageECG(file))
-    button.grid(row=2)
+    if(extrema[0] != extrema[1]):
+        button = Button(window, text='Проанализировать изображение', command=lambda: analysisImageECG(file))
+        button.grid(row=2)
+        lbl_result.config(text="")
+    else:
+        lbl_result.config(text="Вы не можете проанализировать однотонное изображение")
 
     lbl_result.grid(row=3)
 
@@ -100,6 +112,7 @@ def analysisImageECG(file):
     # нужно сюда передать открытый файл с диспетчера
     img = cv.imdecode(np.fromfile(file, dtype=np.uint8), cv.IMREAD_UNCHANGED)
     chanels = np.array(img)
+
     if chanels.ndim == 3:
         img = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
 
@@ -112,12 +125,17 @@ def analysisImageECG(file):
     else:
         threshold, img = cv.threshold(img, 138, 255, cv.THRESH_BINARY)
 
+
     img = cv.resize(img, (image_weight, image_height), interpolation=cv.INTER_AREA)
 
     img = img.astype('float') / 255
 
-    # plt.imshow(img)
-    # plt.show()
+
+
+
+
+    plt.imshow(img)
+    plt.show()
     roi = image.img_to_array(img)
     roi = np.expand_dims(roi, axis=0)
 
@@ -126,9 +144,10 @@ def analysisImageECG(file):
     result = model.predict(roi)
 
 
+
     if result > 0.5:
         lbl_result.config(text="Нормальное ЭКГ")
-    elif 0.000001 < result < 0.5:
+    elif 0.05 < result < 0.5:
         lbl_result.config(text="Обнаружены признаки инфаркта")
     else:
         lbl_result.config(text="Ничего не обнаружено")
